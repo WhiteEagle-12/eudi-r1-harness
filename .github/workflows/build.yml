@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 60
     steps:
       - name: Checkout wallet
@@ -20,10 +20,12 @@ jobs:
           ref: b047e1c8d23b04cf65de68483f91e56dddbe9f4c
           path: app
           fetch-depth: 1
-      - name: Environment
+      - name: Select Xcode 16
         run: |
+          ls /Applications | grep -i xcode || true
+          if [ -d /Applications/Xcode_16.4.app ]; then sudo xcode-select -s /Applications/Xcode_16.4.app; fi
           xcodebuild -version
-          xcrun simctl list devices available | head -30
+          xcrun simctl list devices available | head -20
       - name: Build
         run: |
           cd app
