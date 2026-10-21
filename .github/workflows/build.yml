@@ -20,14 +20,38 @@ jobs:
           ref: b047e1c8d23b04cf65de68483f91e56dddbe9f4c
           path: app
           fetch-depth: 1
-      - name: Select Xcode 16
+      - name: Select Xcode 26
         run: |
-          ls /Applications | grep -i xcode || true
-          if [ -d /Applications/Xcode_26.0.1.app ]; then sudo xcode-select -s /Applications/Xcode_26.0.1.app; fi
+          sudo xcode-select -s /Applications/Xcode_26.0.1.app
           xcodebuild -version
-          xcrun simctl list devices available | head -20
       - name: Build
         run: |
           cd app
           set -o pipefail
-          xcodebuild build -project IDGo.xcodeproj -scheme "IDGo Dev" -destination 'generic/platform=iOS Simulator' -skipMacroValidation -skipPackagePluginValidation -derivedDataPath "$RUNNER_TEMP/dd" 2>&1 | tail -150
+          xcodebuild build -project IDGo.xcodeproj -scheme "IDGo Dev" -destination 'generic/platform=iOS Simulator' -skipMacroValidation -skipPackagePluginValidation -derivedDataPath "$RUNNER_TEMP/dd" 2>&1 | tail -60
+      - name: Boot simulator, install, launch
+        run: |
+          set -x
+          APP=$(find "$RUNNER_TEMP/dd/Build/Products" -maxdepth 3 -name '*.app' | head -1)
+          echo "APP=$APP"
+          BID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          echo "BID=$BID"
+          UDID=$(xcrun simctl list devices available | grep -E 'iPhone 1[6-9]|iPhone 2[0-9]' | head -1 | grep -oE '[0-9A-F-]{36}' | head -1)
+          if [ -z "$UDID" ]; then UDID=$(xcrun simctl list devices available | grep -oE '[0-9A-F-]{36}' | head -1); fi
+          echo "UDID=$UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
+          xcrun simctl install "$UDID" "$APP"
+          xcrun simctl launch "$UDID" "$BID" || true
+          sleep 12
+          xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/launch.png" || true
+          xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "IDGo"' 2>/dev/null | tail -60 || true
+          echo "BID=$BID" > "$RUNNER_TEMP/meta.txt"
+          echo "UDID=$UDID" >> "$RUNNER_TEMP/meta.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: launch-shot
+          path: |
+            ${{ runner.temp }}/launch.png
+            ${{ runner.temp }}/meta.txt
+          if-no-files-found: warn
