@@ -33,6 +33,28 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode_26.0.1.app
           xcodebuild -version
+      - name: Make placeholder Firebase config
+        run: |
+          cat > "$RUNNER_TEMP/fake-gs.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>API_KEY</key><string>AIzaSyA1234567890abcdefghijklmnopqrstuv</string>
+            <key>GCM_SENDER_ID</key><string>123456789012</string>
+            <key>PLIST_VERSION</key><string>1</string>
+            <key>BUNDLE_ID</key><string>org.sprind.wallet.dev</string>
+            <key>PROJECT_ID</key><string>placeholder-project</string>
+            <key>STORAGE_BUCKET</key><string>placeholder-project.appspot.com</string>
+            <key>IS_ADS_ENABLED</key><false/>
+            <key>IS_ANALYTICS_ENABLED</key><false/>
+            <key>IS_APPINVITE_ENABLED</key><false/>
+            <key>IS_GCM_ENABLED</key><true/>
+            <key>IS_SIGNIN_ENABLED</key><false/>
+            <key>GOOGLE_APP_ID</key><string>1:123456789012:ios:0123456789abcdef</string>
+          </dict>
+          </plist>
+          PLIST
       - name: Build
         run: |
           cd app
@@ -50,6 +72,8 @@ jobs:
           echo "UDID=$UDID"
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b || true
+          cp "$RUNNER_TEMP/fake-gs.plist" "$APP/GoogleService-Info.plist"
+          echo "injected Firebase plist"
           xcrun simctl install "$UDID" "$APP"
           ( xcrun simctl launch --console-pty "$UDID" "$BID" > "$RUNNER_TEMP/app.log" 2>&1 & ) || true
           sleep 12
