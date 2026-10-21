@@ -1,0 +1,27 @@
+name: build-ios
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: german-national-wallet/de-eudi-wallet-ios
+          ref: b047e1c8d23b04cf65de68483f91e56dddbe9f4c
+          path: app
+          fetch-depth: 1
+      - name: Env
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available | head -40
+      - name: Build for simulator
+        run: |
+          cd app
+          set -o pipefail
+          xcodebuild build \
+            -project IDGo.xcodeproj \
+            -scheme "IDGo Dev" \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipMacroValidation -skipPackagePluginValidation \
+            -derivedDataPath "$RUNNER_TEMP/dd" 2>&1 | tail -120
