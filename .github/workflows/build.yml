@@ -20,6 +20,15 @@ jobs:
           ref: b047e1c8d23b04cf65de68483f91e56dddbe9f4c
           path: app
           fetch-depth: 1
+      - name: Cache build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/dd
+            ~/Library/Caches/org.swift.swiftpm
+          key: dd-${{ github.run_id }}
+          restore-keys: |
+            dd-
       - name: Select Xcode 26
         run: |
           sudo xcode-select -s /Applications/Xcode_26.0.1.app
@@ -42,10 +51,13 @@ jobs:
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b || true
           xcrun simctl install "$UDID" "$APP"
-          xcrun simctl launch "$UDID" "$BID" || true
+          ( xcrun simctl launch --console-pty "$UDID" "$BID" > "$RUNNER_TEMP/app.log" 2>&1 & ) || true
           sleep 12
           xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/launch.png" || true
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "IDGo"' 2>/dev/null | tail -60 || true
+          echo "--- app.log ---"; tail -80 "$RUNNER_TEMP/app.log" || true
+          echo "--- crash reports ---"; ls -lt ~/Library/Logs/DiagnosticReports 2>/dev/null | head -5
+          for f in $(ls -t ~/Library/Logs/DiagnosticReports/*IDGo* 2>/dev/null | head -2); do echo "== $f"; head -60 "$f"; done
           echo "BID=$BID" > "$RUNNER_TEMP/meta.txt"
           echo "UDID=$UDID" >> "$RUNNER_TEMP/meta.txt"
       - uses: actions/upload-artifact@v4
@@ -54,4 +66,5 @@ jobs:
           path: |
             ${{ runner.temp }}/launch.png
             ${{ runner.temp }}/meta.txt
+            ${{ runner.temp }}/app.log
           if-no-files-found: warn
