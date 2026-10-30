@@ -75,7 +75,7 @@ jobs:
           cp "$RUNNER_TEMP/fake-gs.plist" "$APP/GoogleService-Info.plist"
           echo "injected Firebase plist"
           xcrun simctl install "$UDID" "$APP"
-          ( xcrun simctl launch --console-pty "$UDID" "$BID" > "$RUNNER_TEMP/app.log" 2>&1 & ) || true
+          ( SIMCTL_CHILD_API_KEY="${{ secrets.WALLET_API_KEY }}" xcrun simctl launch --console-pty "$UDID" "$BID" --ui-testing > "$RUNNER_TEMP/app.log" 2>&1 & ) || true
           sleep 12
           xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/launch.png" || true
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "IDGo"' 2>/dev/null | tail -60 || true
