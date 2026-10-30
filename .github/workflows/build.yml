@@ -86,13 +86,16 @@ jobs:
           cp "$RUNNER_TEMP/fake-gs.plist" "$APP/GoogleService-Info.plist"
           echo "injected Firebase plist"
           xcrun simctl install "$UDID" "$APP"
-          ( SIMCTL_CHILD_API_KEY="${{ secrets.WALLET_API_KEY }}" xcrun simctl launch --console-pty "$UDID" "$BID" --ui-testing > "$RUNNER_TEMP/app.log" 2>&1 & ) || true
-          sleep 12
+          ( xcrun simctl spawn "$UDID" log stream --level debug --predicate 'processImagePath CONTAINS "IDGo" OR subsystem CONTAINS "sprind"' > "$RUNNER_TEMP/stream.log" 2>&1 & ) || true
+          sleep 2
+          SIMCTL_CHILD_API_KEY="${{ secrets.WALLET_API_KEY }}" xcrun simctl launch "$UDID" "$BID" --ui-testing > "$RUNNER_TEMP/app.log" 2>&1 || true
+          sleep 15
           xcrun simctl io "$UDID" screenshot "$RUNNER_TEMP/launch.png" || true
           xcrun simctl spawn "$UDID" log show --last 2m --predicate 'process == "IDGo"' 2>/dev/null | tail -60 || true
           echo "--- app.log ---"; tail -80 "$RUNNER_TEMP/app.log" || true
           echo "--- crash reports ---"; ls -lt ~/Library/Logs/DiagnosticReports 2>/dev/null | head -5
           for f in $(ls -t ~/Library/Logs/DiagnosticReports/*IDGo* 2>/dev/null | head -2); do echo "== $f"; head -60 "$f"; done
+          echo "--- stream.log ---"; tail -80 "$RUNNER_TEMP/stream.log" || true
           echo "BID=$BID" > "$RUNNER_TEMP/meta.txt"
           echo "UDID=$UDID" >> "$RUNNER_TEMP/meta.txt"
       - uses: actions/upload-artifact@v4
@@ -102,4 +105,5 @@ jobs:
             ${{ runner.temp }}/launch.png
             ${{ runner.temp }}/meta.txt
             ${{ runner.temp }}/app.log
+            ${{ runner.temp }}/stream.log
           if-no-files-found: warn
