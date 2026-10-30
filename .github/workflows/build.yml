@@ -59,7 +59,18 @@ jobs:
         run: |
           cd app
           set -o pipefail
-          xcodebuild build -project IDGo.xcodeproj -scheme "IDGo Dev" -destination 'generic/platform=iOS Simulator' -skipMacroValidation -skipPackagePluginValidation -derivedDataPath "$RUNNER_TEMP/dd" 2>&1 | tail -60
+          xcodebuild build -project IDGo.xcodeproj -scheme "IDGo Dev" \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipMacroValidation -skipPackagePluginValidation \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            WALLET_HOST_URL="https://wallet-backend-sandbox.apps.sandbox.nwb.youniqx.com" \
+            VCI_ISSUER_URL="https://wallet-backend-sandbox.apps.sandbox.nwb.youniqx.com" \
+            WALLET_OTLP_HOST_URL="https://wallet-backend-sandbox.apps.sandbox.nwb.youniqx.com" \
+            TLS_PIN_HOST_SUFFIXES="wallet-backend-sandbox.apps.sandbox.nwb.youniqx.com" \
+            FEATURE_FLAG_BASE_URL="https://wallet-backend-sandbox.apps.sandbox.nwb.youniqx.com" \
+            APP_UPDATE_URL="https://wallet-backend-sandbox.apps.sandbox.nwb.youniqx.com" \
+            PRIVACY_POLICY_LINK="https://wallet-backend-sandbox.apps.sandbox.nwb.youniqx.com" \
+            2>&1 | tail -40
       - name: Boot simulator, install, launch
         run: |
           set -x
